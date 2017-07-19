@@ -10,6 +10,7 @@ Update the first 4 varriables with your information
 */
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -77,9 +78,11 @@ func main() {
 
 	configFile := flag.String("configFile", "./config.json", "JSON config file to read.")
 	tmpFile := flag.String("tmpFile", "/tmp/actualIP.txt", "Path to store the last public IP.")
-
+	test := flag.Bool("test", false, "Test URL Godaddy.")
+	flag.Parse()
 	fmt.Println("configFile:", *configFile)
 	fmt.Println("tmpFile:", *tmpFile)
+	fmt.Println("test:", *test)
 
 	config := getConfigurationFile(*configFile)
 	fmt.Println(config)
@@ -94,4 +97,57 @@ func main() {
 
 	//GODADDY Implementation to update
 
+	client := &http.Client{}
+
+	var url string
+	if *test == true {
+		url = "https://api.ote-godaddy.com/v1/domains/"
+	} else {
+		url = "https://api.godaddy.com/v1/domains/"
+	}
+	fmt.Println("URL > " + url)
+	//req, _ := http.NewRequest("GET", url+config.Domain+"/records/A/"+config.Name, nil)
+
+	//See all domains:
+	//req, _ := http.NewRequest("GET", url, nil)
+
+	// Details one domain:
+	//req, _ := http.NewRequest("GET", url+config.Domain, nil)
+
+	// GET records of one domain:
+	//req, _ := http.NewRequest("GET", url+config.Domain+"/records", nil)
+
+	// POST to recoed @ (all connections)
+	// URL: = "https://api.ote-godaddy.com/v1/domains/abchub.org/records/A/%40"
+	// Data to sed: [{"data": publicIP,"ttl": 600}]
+
+	bodyToSend := map[string]interface{}{"data": publicIP, "ttl": 600}
+	jsonBody, _ := json.Marshal(bodyToSend)
+	req, _ := http.NewRequest("PUT", url+config.Domain+"/records/A/%40", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	//=====================
+	// GLOBAL
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "sso-key "+config.Key+":"+config.Secret)
+
+	fmt.Println("URL: ", req.URL)
+	fmt.Println("Header: ", req.Header)
+	fmt.Println("Body: ", req.Body)
+
+	res, err := client.Do(req)
+
+	var f interface{}
+	if err != nil {
+		l.Println("error:", err)
+	} else {
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			l.Println("error:", err.Error())
+		}
+		err = json.Unmarshal([]byte(body), &f)
+		if err != nil {
+			l.Println("error:", err)
+		}
+	}
+	fmt.Println(f)
 }
