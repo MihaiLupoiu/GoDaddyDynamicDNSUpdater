@@ -4,17 +4,19 @@ package main
 First go to GoDaddy developer site to create a developer account and get your key and secret
 
 https://developer.godaddy.com/getstarted
- 
+
 Update the first 4 varriables with your information
 
 */
 
 import (
-	"fmt"
-	"os"
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
 )
 
 /*
@@ -27,49 +29,69 @@ import (
 */
 
 type Configuration struct {
-    Domain	string
-	Name   	string
-	Key		string
-	Secret 	string
+	Domain string
+	Name   string
+	Key    string
+	Secret string
 }
 
-/* Add option to read from commands like -c /path/to/file.json. */
-func main() {
-	file, _ := os.Open("conf.json")
-	decoder := json.NewDecoder(file)
+// Log posible errors
+var l = log.New(os.Stdout, ("[" + os.Args[0][2:] + "]: "), log.Ldate|log.Lshortfile)
+
+func getConfigurationFile(configFile string) Configuration {
 	configuration := Configuration{}
-	err := decoder.Decode(&configuration)
-	if err != nil {
-		fmt.Println("error:", err)
+	_, err := os.Stat(configFile)
+	if os.IsNotExist(err) {
+		l.Println("No config.json file to read!")
+	} else {
+		file, _ := os.Open(configFile)
+		decoder := json.NewDecoder(file)
+		err := decoder.Decode(&configuration)
+		if err != nil {
+			l.Println("error:", err)
+		}
 	}
-	fmt.Println(configuration.Domain)
-	
-	// Get public ip address there are several websites that can do this.
-	/*
-	{
-		"ip": "90.106.193.21",
-		"hostname": "21.pool90-106-193.dynamic.orange.es",
-		"city": "Port Colom",
-		"region": "Islas Baleares",
-		"country": "ES",
-		"loc": "39.4192,3.2600",
-		"org": "AS12479 Orange Espagne SA"
-	}
-	*/
+	return configuration
+}
+
+// Get public ip address there are several websites that can do this.
+func getPublicIP() string {
+	m := map[string]string{}
 	response, err := http.Get("http://ipinfo.io/json")
 	if err != nil {
-			fmt.Println(err)
+		l.Println("error:", err)
 	} else {
 		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			panic(err.Error())
+			l.Println("error:", err.Error())
 		}
-		m := map[string]string{}
 		err = json.Unmarshal([]byte(body), &m)
 		if err != nil {
-			panic(err)
+			l.Println("error:", err)
 		}
-		fmt.Println(m["ip"])
 	}
+	return m["ip"]
+}
+
+func main() {
+
+	configFile := flag.String("configFile", "./config.json", "JSON config file to read.")
+	tmpFile := flag.String("tmpFile", "/tmp/actualIP.txt", "Path to store the last public IP.")
+
+	fmt.Println("configFile:", *configFile)
+	fmt.Println("tmpFile:", *tmpFile)
+
+	config := getConfigurationFile(*configFile)
+	fmt.Println(config)
+
+	publicIP := getPublicIP()
+	fmt.Println(publicIP)
+
+	// Check if tmp file exist, if not create.
+	// Check if  IP == IP in file?
+	// IF true : exit
+	// Else update.
+
+	//GODADDY Implementation to update
 
 }
