@@ -8,48 +8,54 @@ https://developer.godaddy.com/getstarted
 Update the first 4 varriables with your information
 
 */
-
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"log/syslog"
 	"net/http"
 	"os"
+	"strings"
 )
 
-/*
-{
-    "Domain":   "$your.domain.to.update  # your domain",
-    "Name":     "$name_of_host #name of the A record to update",
-    "Key":      "$key #key for godaddy developer API",
-    "Secret":   "$secret #Secret for godday developer API"
-}
-*/
-
+// Configuration struct for reading the config.json
 type Configuration struct {
+	URL    string
 	Domain string
 	Name   string
 	Key    string
 	Secret string
 }
 
-// Log posible errors
-var l = log.New(os.Stdout, ("[" + os.Args[0][2:] + "]: "), log.Ldate|log.Lshortfile)
+// Log level
+func initLog(name string, debug bool) {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	if debug {
+		log.SetOutput(os.Stdout)
+	} else {
+		var logWriter, logErr = syslog.New(syslog.LOG_ERR, string(os.Args[0][2:]))
+		if logErr == nil {
+			log.SetOutput(logWriter)
+		}
+	}
+}
 
 func getConfigurationFile(configFile string) Configuration {
 	configuration := Configuration{}
 	_, err := os.Stat(configFile)
 	if os.IsNotExist(err) {
-		l.Println("No config.json file to read!")
+		log.Println("No config.json file to read!")
 	} else {
 		file, _ := os.Open(configFile)
 		decoder := json.NewDecoder(file)
 		err := decoder.Decode(&configuration)
 		if err != nil {
-			l.Println("error:", err)
+			log.Println("error:", err)
 		}
 	}
 	return configuration
@@ -58,96 +64,113 @@ func getConfigurationFile(configFile string) Configuration {
 // Get public ip address there are several websites that can do this.
 func getPublicIP() string {
 	m := map[string]string{}
-	response, err := http.Get("http://ipinfo.io/json")
+	req, _ := http.NewRequest("GET", "http://ipinfo.io/json", nil)
+	client := &http.Client{}
+	res, err := client.Do(req)
+
 	if err != nil {
-		l.Println("error:", err)
+		log.Println("error:", err)
 	} else {
-		body, err := ioutil.ReadAll(response.Body)
+		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			l.Println("error:", err.Error())
+			log.Println("error:", err.Error())
 		}
 		err = json.Unmarshal([]byte(body), &m)
 		if err != nil {
-			l.Println("error:", err)
+			log.Println("error:", err)
 		}
 	}
-	return m["ip"]
+	retIP := strings.TrimRight(m["ip"], "\n")
+	return retIP
 }
 
-func main() {
-
-	configFile := flag.String("configFile", "./config.json", "JSON config file to read.")
-	tmpFile := flag.String("tmpFile", "/tmp/actualIP.txt", "Path to store the last public IP.")
-	test := flag.Bool("test", false, "Test URL Godaddy.")
-	flag.Parse()
-	fmt.Println("configFile:", *configFile)
-	fmt.Println("tmpFile:", *tmpFile)
-	fmt.Println("test:", *test)
-
-	config := getConfigurationFile(*configFile)
-	fmt.Println(config)
-
-	publicIP := getPublicIP()
-	fmt.Println(publicIP)
-
-	// Check if tmp file exist, if not create.
-	// Check if  IP == IP in file?
-	// IF true : exit
-	// Else update.
-
-	//GODADDY Implementation to update
-
-	client := &http.Client{}
-
-	var url string
-	if *test == true {
-		url = "https://api.ote-godaddy.com/v1/domains/"
-	} else {
-		url = "https://api.godaddy.com/v1/domains/"
-	}
-	fmt.Println("URL > " + url)
-	//req, _ := http.NewRequest("GET", url+config.Domain+"/records/A/"+config.Name, nil)
-
-	//See all domains:
-	//req, _ := http.NewRequest("GET", url, nil)
-
-	// Details one domain:
-	//req, _ := http.NewRequest("GET", url+config.Domain, nil)
-
-	// GET records of one domain:
-	//req, _ := http.NewRequest("GET", url+config.Domain+"/records", nil)
-
-	// POST to recoed @ (all connections)
-	// URL: = "https://api.ote-godaddy.com/v1/domains/abchub.org/records/A/%40"
-	// Data to sed: [{"data": publicIP,"ttl": 600}]
+// Godaddy Implementation to update public IP
+func updateIPGodaddy(url, publicIP string, config Configuration) {
 
 	bodyToSend := map[string]interface{}{"data": publicIP, "ttl": 600}
 	jsonBody, _ := json.Marshal(bodyToSend)
-	req, _ := http.NewRequest("PUT", url+config.Domain+"/records/A/%40", bytes.NewBuffer(jsonBody))
+	if config.Name == "@" {
+		config.Name = "%40"
+	}
+	req, _ := http.NewRequest("PUT", url+config.Domain+"/records/A/"+config.Name, bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
-	//=====================
-	// GLOBAL
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "sso-key "+config.Key+":"+config.Secret)
 
-	fmt.Println("URL: ", req.URL)
-	fmt.Println("Header: ", req.Header)
-	fmt.Println("Body: ", req.Body)
-
+	client := &http.Client{}
 	res, err := client.Do(req)
 
 	var f interface{}
 	if err != nil {
-		l.Println("error:", err)
+		log.Println("error:", err)
 	} else {
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			l.Println("error:", err.Error())
+			log.Println("error:", err.Error())
 		}
 		err = json.Unmarshal([]byte(body), &f)
 		if err != nil {
-			l.Println("error:", err)
+			log.Println("error:", err)
 		}
 	}
-	fmt.Println(f)
+	m := f.(map[string]interface{})
+	if len(m) != 0 {
+		fmt.Println(m)
+	}
+}
+
+func getTmpIP(path string) string {
+	tmpFile, err := os.Open(path)
+	var tmpIP string
+	if err == nil {
+		readFile := bufio.NewReader(tmpFile)
+		tmpIP, err = readFile.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				log.Println("error: No IP in", path, ".")
+			} else {
+				log.Println("error:", err)
+			}
+		}
+		if err := tmpFile.Close(); err != nil {
+			log.Println("error:", err)
+		}
+
+	} else {
+		log.Println("error:", err)
+	}
+	return strings.TrimRight(tmpIP, "\n")
+}
+
+func updateTmpIP(path, publicIP string) {
+	tmpFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		log.Println("error:", err)
+	}
+	_, err = tmpFile.WriteString(publicIP + "\n")
+	tmpFile.Sync()
+	if err := tmpFile.Close(); err != nil {
+		log.Println("error:", err)
+	}
+}
+
+func main() {
+	// Get arguments
+	configFilePath := flag.String("configFile", "./config.json", "JSON config file to read.")
+	tmpFilePath := flag.String("tmpFile", "/tmp/actualIP.txt", "Path to store the last public IP.")
+	debug := flag.Bool("debug", false, "Debug mode.")
+	flag.Parse()
+
+	config := getConfigurationFile(*configFilePath)
+	initLog("["+os.Args[0][2:]+"]: ", *debug)
+	publicIP := getPublicIP()
+	tmpIP := getTmpIP(*tmpFilePath)
+
+	if strings.Compare(tmpIP, publicIP) != 0 {
+		updateIPGodaddy(config.URL, publicIP, config)
+		updateTmpIP(*tmpFilePath, publicIP)
+		log.Println("IP updated.")
+	} else {
+		log.Println("No IP change.")
+	}
 }
