@@ -13,7 +13,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -48,8 +47,8 @@ func initLog(name string, debug bool) {
 func getConfigurationFile(configFile string) Configuration {
 	configuration := Configuration{}
 	_, err := os.Stat(configFile)
-	if os.IsNotExist(err) {
-		log.Println("No config.json file to read!")
+	if err != nil {
+		log.Println("error:", err)
 	} else {
 		file, _ := os.Open(configFile)
 		decoder := json.NewDecoder(file)
@@ -100,7 +99,6 @@ func updateIPGodaddy(url, publicIP string, config Configuration) {
 	client := &http.Client{}
 	res, err := client.Do(req)
 
-	var f interface{}
 	if err != nil {
 		log.Println("error:", err)
 	} else {
@@ -108,14 +106,10 @@ func updateIPGodaddy(url, publicIP string, config Configuration) {
 		if err != nil {
 			log.Println("error:", err.Error())
 		}
-		err = json.Unmarshal([]byte(body), &f)
-		if err != nil {
-			log.Println("error:", err)
+		strBody := string([]byte(body))
+		if len(strBody) > 2 {
+			log.Println(strBody)
 		}
-	}
-	m := f.(map[string]interface{})
-	if len(m) != 0 {
-		fmt.Println(m)
 	}
 }
 
