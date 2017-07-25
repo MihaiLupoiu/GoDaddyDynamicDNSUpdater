@@ -31,7 +31,7 @@ type Configuration struct {
 	Secret string
 }
 
-// Log level
+// init log level to print in syslog
 func initLog(name string, debug bool) {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	if debug {
@@ -44,13 +44,13 @@ func initLog(name string, debug bool) {
 	}
 }
 
+// Parshe json configuration file.
 func getConfigurationFile(configFile string) Configuration {
 	configuration := Configuration{}
-	_, err := os.Stat(configFile)
+	file, err := os.Open(configFile)
 	if err != nil {
 		log.Println("error:", err)
 	} else {
-		file, _ := os.Open(configFile)
 		decoder := json.NewDecoder(file)
 		err := decoder.Decode(&configuration)
 		if err != nil {
@@ -62,25 +62,19 @@ func getConfigurationFile(configFile string) Configuration {
 
 // Get public ip address there are several websites that can do this.
 func getPublicIP() string {
-	m := map[string]string{}
-	req, _ := http.NewRequest("GET", "http://ipinfo.io/json", nil)
-	client := &http.Client{}
-	res, err := client.Do(req)
-
+	var strIP string
+	res, err := http.Get("https://api.ipify.org")
 	if err != nil {
 		log.Println("error:", err)
 	} else {
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			log.Println("error:", err.Error())
-		}
-		err = json.Unmarshal([]byte(body), &m)
+		ip, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			log.Println("error:", err)
+		} else {
+			strIP = string(ip)
 		}
 	}
-	retIP := strings.TrimRight(m["ip"], "\n")
-	return retIP
+	return strIP
 }
 
 // Godaddy Implementation to update public IP
@@ -91,7 +85,10 @@ func updateIPGodaddy(url, publicIP string, config Configuration) {
 	if config.Name == "@" {
 		config.Name = "%40"
 	}
-	req, _ := http.NewRequest("PUT", url+config.Domain+"/records/A/"+config.Name, bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest("PUT", url+config.Domain+"/records/A/"+config.Name, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		log.Println("error:", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "sso-key "+config.Key+":"+config.Secret)
@@ -113,6 +110,7 @@ func updateIPGodaddy(url, publicIP string, config Configuration) {
 	}
 }
 
+// Get temporal ip sored in the /tmp/actualFile.txt
 func getTmpIP(path string) string {
 	tmpFile, err := os.Open(path)
 	var tmpIP string
@@ -136,6 +134,7 @@ func getTmpIP(path string) string {
 	return strings.TrimRight(tmpIP, "\n")
 }
 
+// Update IP in the /tmp/actualFile.txt.
 func updateTmpIP(path, publicIP string) {
 	tmpFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
