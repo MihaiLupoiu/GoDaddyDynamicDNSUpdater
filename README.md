@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/MihaiLupoiu/GoDaddyDynamicDNSUpdater.svg?branch=master)](https://travis-ci.org/MihaiLupoiu/GoDaddyDynamicDNSUpdater)
+
 # GoDaddyDynamicDNSUpdater
 Script used to check and update your GoDaddy DNS server to the IP address of your current internet connection.
 
