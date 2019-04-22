@@ -155,6 +155,7 @@ func main() {
 	configFilePath := flag.String("configFile", "./config.json", "JSON config file to read.")
 	tmpFilePath := flag.String("tmpFile", "/tmp/actualIP.txt", "Path to store the last public IP.")
 	debug := flag.Bool("debug", false, "Debug mode.")
+	forceUpdate := flag.Bool("force", false, "Force update.")
 	flag.Parse()
 
 	config := getConfigurationFile(*configFilePath)
@@ -162,11 +163,12 @@ func main() {
 	publicIP := getPublicIP()
 	tmpIP := getTmpIP(*tmpFilePath)
 
-	if strings.Compare(tmpIP, publicIP) != 0 {
+	if strings.Compare(tmpIP, publicIP) != 0 || *forceUpdate {
 		updateIPGodaddy(config.URL, publicIP, config)
 		updateTmpIP(*tmpFilePath, publicIP)
 		log.Println("IP updated.")
 	} else {
 		log.Println("No IP change.")
 	}
+
 }
