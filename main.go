@@ -54,7 +54,7 @@ func getConfigurationFile(configFile string) Configuration {
 		decoder := json.NewDecoder(file)
 		err := decoder.Decode(&configuration)
 		if err != nil {
-			log.Println("error:", err)
+			log.Panic("error:", err)
 		}
 	}
 	return configuration
