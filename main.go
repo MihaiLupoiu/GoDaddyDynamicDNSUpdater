@@ -49,7 +49,7 @@ func getConfigurationFile(configFile string) Configuration {
 	configuration := Configuration{}
 	file, err := os.Open(configFile)
 	if err != nil {
-		log.Println("error:", err)
+		log.Panic("error:", err)
 	} else {
 		decoder := json.NewDecoder(file)
 		err := decoder.Decode(&configuration)
