@@ -80,7 +80,10 @@ func getPublicIP() string {
 // Godaddy Implementation to update public IP
 func updateIPGodaddy(url, publicIP string, config Configuration) {
 
-	bodyToSend := map[string]interface{}{"data": publicIP, "ttl": 600}
+	bodyToSend := []map[string]interface{}{}
+	data := map[string]interface{}{"data": publicIP, "ttl": 600}
+	bodyToSend = append(bodyToSend, data)
+
 	jsonBody, _ := json.Marshal(bodyToSend)
 	if config.Name == "@" {
 		config.Name = "%40"
