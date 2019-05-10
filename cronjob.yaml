@@ -1,0 +1,24 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: godaddy-dynamic-dns-updater
+spec:
+  schedule: "*/2 * * * *"
+  concurrencyPolicy: "Forbid"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: godaddy-dynamic-dns-updater
+            image: myhay/godaddy-dns-updater:1
+            imagePullPolicy: Always
+            volumeMounts:
+            - name: configmap
+              mountPath: /config.json
+              subPath: config.json
+          restartPolicy: OnFailure
+          volumes:
+            - name: configmap
+              configMap:
+                name: godaddy-dynamic-dns-updater-conf

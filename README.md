@@ -35,3 +35,13 @@ To run the docker image:
 docker run -v $(PWD)/config.json:/config.json godaddy-dns-updater
 ```
 test_config.json
+
+## Kubernetes
+Deploy in kubernetes:
+```bash
+kubectl create configmap godaddy-dynamic-dns-updater-conf --from-file=config.json
+kubectl apply -f ./cronjob.yaml
+```
+
+## TODO:
+* Eliminate the file and compare the IP from Godaddy with my public IP. Also show in the logs the IP before and after the change.
