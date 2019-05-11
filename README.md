@@ -7,7 +7,8 @@ This client was created based on the project "GoDaddy_Powershell_DDNS" by markaf
 
 ## Configuration
 
-In order to use the script it is necesary to generate a `key` and `secret` from the godaddy developer's page.
+In order to use the script it is necesary to create a developer account and get your `key` and `secret` from the GoDaddy developer site.
+https://developer.godaddy.com/getstarted
 
 Example of configuration using the godaddy testing api:
 ```json
