@@ -11,7 +11,7 @@ spec:
         spec:
           containers:
           - name: godaddy-dynamic-dns-updater
-            image: myhay/godaddy-dns-updater:1
+            image: myhay/godaddy-dns-updater:2
             imagePullPolicy: Always
             volumeMounts:
             - name: configmap
