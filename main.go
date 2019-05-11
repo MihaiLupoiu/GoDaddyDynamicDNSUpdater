@@ -29,7 +29,7 @@ type Configuration struct {
 	Secret string
 }
 
-type GodaddyData struct {
+type godaddyData struct {
 	Data string `json:"data"`
 	Name string `json:"name"`
 	TTL  int64  `json:"ttl"`
@@ -145,7 +145,7 @@ func getGodaddyIP(config Configuration) string {
 			log.Println("error:", err.Error())
 		}
 
-		var data []GodaddyData
+		var data []godaddyData
 		err = json.Unmarshal(body, &data)
 		if err != nil {
 			log.Println("error:", err)
