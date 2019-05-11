@@ -1,3 +1,10 @@
 language: go
-go:
-  - 1.12.x
+sudo: required
+language: python
+services:
+- docker
+env:
+  global:
+  - DOCKER_REPO=myhay/godaddy-dns-updater:2
+script:
+- docker build -t $DOCKER_REPO .
